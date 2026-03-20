@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Menu</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="topbar">
+  <h1>🛒 Shop Manager</h1>
+  <a href="/logout">Logout</a>
+</div>
+<div class="container" style="padding-top:20px;">
+  <p class="welcome">Welcome, <strong>{{ user }}</strong> &nbsp;
+    <span class="badge {% if role == 'Admin' %}badge-green{% else %}badge-red{% endif %}">{{ role }}</span>
+  </p>
+
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      {% for msg in messages %}
+        <div class="flash">{{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  {% if role == 'Admin' %}
+  <div class="menu-grid">
+    <a href="/sale" class="menu-btn">
+      <span class="icon">💰</span>New Sale
+    </a>
+    <a href="/products" class="menu-btn">
+      <span class="icon">📦</span>Products
+    </a>
+    <a href="/history" class="menu-btn grey">
+      <span class="icon">📋</span>Sales History
+    </a>
+    <a href="/reports" class="menu-btn grey">
+      <span class="icon">📊</span>Reports
+    </a>
+  </div>
+  {% else %}
+  <div class="menu-grid">
+    <a href="/sale" class="menu-btn" style="grid-column: span 2; padding: 40px;">
+      <span class="icon">💰</span>Record a Sale
+    </a>
+  </div>
+  <div style="margin-top:16px;">
+    <a href="/sale/receipt/0" style="display:none"></a>
+  </div>
+  {% endif %}
+</div>
+</body>
+</html>

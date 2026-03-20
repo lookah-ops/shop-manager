@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Products</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="topbar">
+  <h1>📦 Products</h1>
+  <a href="/menu">← Back</a>
+</div>
+<div class="container" style="padding-top:16px;">
+
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}{% for msg in messages %}<div class="flash">{{ msg }}</div>{% endfor %}{% endif %}
+  {% endwith %}
+
+  <a href="/products/add" class="btn btn-black">+ Add New Product</a>
+
+  <div class="card" style="padding:0; overflow:hidden;">
+    {% for p in products %}
+    <div class="product-row" style="padding:14px 16px;">
+      <div class="product-info">
+        <div class="product-name">{{ p['ProductName'] }}</div>
+        <div class="product-meta">{{ p['Category'] }} &nbsp;·&nbsp; ${{ "%.2f"|format(p['Price']) }} &nbsp;·&nbsp;
+          Stock: <strong {% if p['StockQty'] < 10 %}style="color:#c0392b"{% endif %}>{{ p['StockQty'] }}</strong>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <a href="/products/edit/{{ p['ProductID'] }}" class="btn btn-grey btn-sm">Edit</a>
+        <a href="/products/delete/{{ p['ProductID'] }}" class="btn btn-red btn-sm" onclick="return confirm('Delete this product?')">Del</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>New Sale</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="topbar">
+  <h1>💰 New Sale</h1>
+  <a href="/menu">← Back</a>
+</div>
+<div class="container" style="padding-top:16px;">
+
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}{% for msg in messages %}<div class="flash error">{{ msg }}</div>{% endfor %}{% endif %}
+  {% endwith %}
+
+  <form method="POST" id="saleForm">
+    <div class="card">
+      <h3>Select Items</h3>
+      <p style="color:#666; font-size:13px; margin-bottom:12px;">Enter quantity for each item. Leave 0 to skip.</p>
+
+      {% for p in products %}
+      <div class="product-row">
+        <div class="product-info">
+          <div class="product-name">{{ p['ProductName'] }}</div>
+          <div class="product-meta">${{ "%.2f"|format(p['Price']) }} &nbsp;·&nbsp; {{ p['StockQty'] }} left</div>
+        </div>
+        <input type="hidden" name="product_id" value="{{ p['ProductID'] }}">
+        <input type="number" name="quantity" value="0" min="0" max="{{ p['StockQty'] }}"
+               class="qty-input" oninput="updateTotal()">
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="card">
+      <h3>Payment</h3>
+      <label>Method</label>
+      <select name="payment">
+        <option value="Cash">Cash</option>
+        <option value="EcoCash">EcoCash</option>
+        <option value="Other">Other</option>
+      </select>
+
+      <div class="total-row">
+        <span>Total:</span>
+        <span id="totalDisplay">$0.00</span>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-green">✅ Record Sale</button>
+  </form>
+</div>
+
+<script>
+  const prices = [{% for p in products %}{{ p['Price'] }},{% endfor %}];
+  function updateTotal() {
+    const qtys = document.querySelectorAll('input[name="quantity"]');
+    let total = 0;
+    qtys.forEach((q, i) => { total += (parseFloat(q.value) || 0) * prices[i]; });
+    document.getElementById('totalDisplay').textContent = '$' + total.toFixed(2);
+  }
+</script>
+</body>
+</html>

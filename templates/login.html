@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shop Login</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container" style="padding-top:60px;">
+  <div class="card">
+    <div style="text-align:center; margin-bottom:24px;">
+      <div style="font-size:48px;">🛒</div>
+      <h2 style="margin-top:8px;">Shop Manager</h2>
+      <p style="color:#666; font-size:14px;">Sign in to continue</p>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for msg in messages %}
+          <div class="flash error">{{ msg }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST">
+      <label>Username</label>
+      <input type="text" name="username" placeholder="Enter username" autocomplete="off">
+      <label>Password</label>
+      <input type="password" name="password" placeholder="Enter password">
+      <button type="submit" class="btn btn-black">Sign In</button>
+    </form>
+  </div>
+</div>
+</body>
+</html>

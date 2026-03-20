@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reports</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="topbar">
+  <h1>📊 Reports</h1>
+  <a href="/menu">← Back</a>
+</div>
+<div class="container" style="padding-top:16px;">
+
+  <div class="card">
+    <h3>Today — {{ today }}</h3>
+    <div class="stat-grid" style="margin-top:12px;">
+      <div class="stat-box">
+        <div class="num">{{ daily['count'] or 0 }}</div>
+        <div class="lbl">Sales Today</div>
+      </div>
+      <div class="stat-box">
+        <div class="num">${{ "%.2f"|format(daily['total'] or 0) }}</div>
+        <div class="lbl">Revenue Today</div>
+      </div>
+    </div>
+  </div>
+
+  {% if low_stock %}
+  <div class="card">
+    <h3>⚠️ Low Stock (below 10)</h3>
+    {% for p in low_stock %}
+    <div class="sale-row">
+      <span>{{ p['ProductName'] }}</span>
+      <span style="color:#c0392b; font-weight:bold;">{{ p['StockQty'] }} left</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card">
+    <h3>✅ Stock Levels OK</h3>
+    <p style="color:#666; font-size:14px;">All products have 10 or more units in stock.</p>
+  </div>
+  {% endif %}
+
+  {% if top_products %}
+  <div class="card">
+    <h3>🏆 Top Selling Products</h3>
+    {% for p in top_products %}
+    <div class="sale-row">
+      <span>{{ p['ProductName'] }}</span>
+      <span>{{ p['TotalSold'] }} sold</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div>
+</body>
+</html>

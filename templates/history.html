@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sales History</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="topbar">
+  <h1>📋 Sales History</h1>
+  <a href="/menu">← Back</a>
+</div>
+<div class="container" style="padding-top:16px;">
+  <div class="card" style="padding:0; overflow:hidden;">
+    {% if sales %}
+      {% for s in sales %}
+      <a href="/history/{{ s['SaleID'] }}" style="text-decoration:none; color:inherit;">
+        <div class="product-row" style="padding:14px 16px;">
+          <div class="product-info">
+            <div class="product-name">Sale #{{ s['SaleID'] }}</div>
+            <div class="product-meta">{{ s['SaleDate'] }} &nbsp;·&nbsp; {{ s['PaymentMethod'] }} &nbsp;·&nbsp; {{ s['ServedBy'] }}</div>
+          </div>
+          <div style="font-weight:bold; font-size:16px;">${{ "%.2f"|format(s['TotalAmount']) }}</div>
+        </div>
+      </a>
+      {% endfor %}
+    {% else %}
+      <div style="padding:24px; text-align:center; color:#666;">No sales yet.</div>
+    {% endif %}
+  </div>
+</div>
+</body>
+</html>

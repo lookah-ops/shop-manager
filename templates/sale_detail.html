@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sale Detail</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="topbar">
+  <h1>Sale #{{ sale['SaleID'] }}</h1>
+  <a href="/history">← Back</a>
+</div>
+<div class="container" style="padding-top:16px;">
+  <div class="card">
+    <p style="color:#666; font-size:13px; margin-bottom:16px;">{{ sale['SaleDate'] }} &nbsp;·&nbsp; {{ sale['ServedBy'] }}</p>
+    {% for item in items %}
+    <div class="sale-row">
+      <span>{{ item['ProductName'] }} x{{ item['Quantity'] }}</span>
+      <span>${{ "%.2f"|format(item['LineTotal']) }}</span>
+    </div>
+    {% endfor %}
+    <div class="total-row">
+      <span>Total</span>
+      <span>${{ "%.2f"|format(sale['TotalAmount']) }}</span>
+    </div>
+    <hr class="divider">
+    <p style="font-size:14px; color:#666;">Payment: <strong>{{ sale['PaymentMethod'] }}</strong></p>
+  </div>
+</div>
+</body>
+</html>
