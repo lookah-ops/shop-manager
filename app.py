@@ -1,16 +1,14 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
-import sqlite3
+import psycopg2
+import psycopg2.extras
 import os
 from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = 'shopkey2026'
 
-DB = 'shop.db'
-
 def get_db():
-    conn = sqlite3.connect(DB)
-    conn.row_factory = sqlite3.Row
+    conn = psycopg2.connect(os.environ['DATABASE_URL'], sslmode='require')
     return conn
 
 def init_db():
@@ -18,14 +16,14 @@ def init_db():
     c = conn.cursor()
 
     c.execute('''CREATE TABLE IF NOT EXISTS tblUsers (
-        UserID INTEGER PRIMARY KEY,
+        UserID SERIAL PRIMARY KEY,
         Username TEXT,
         Password TEXT,
         Role TEXT
     )''')
 
     c.execute('''CREATE TABLE IF NOT EXISTS tblProducts (
-        ProductID INTEGER PRIMARY KEY,
+        ProductID SERIAL PRIMARY KEY,
         ProductName TEXT,
         Category TEXT,
         Price REAL,
@@ -33,7 +31,7 @@ def init_db():
     )''')
 
     c.execute('''CREATE TABLE IF NOT EXISTS tblSales (
-        SaleID INTEGER PRIMARY KEY,
+        SaleID SERIAL PRIMARY KEY,
         SaleDate TEXT,
         TotalAmount REAL,
         PaymentMethod TEXT,
@@ -41,7 +39,7 @@ def init_db():
     )''')
 
     c.execute('''CREATE TABLE IF NOT EXISTS tblSaleItems (
-        SaleItemID INTEGER PRIMARY KEY,
+        SaleItemID SERIAL PRIMARY KEY,
         SaleID INTEGER,
         ProductID INTEGER,
         Quantity INTEGER,
@@ -51,21 +49,21 @@ def init_db():
     # Default users
     c.execute("SELECT COUNT(*) FROM tblUsers")
     if c.fetchone()[0] == 0:
-        c.execute("INSERT INTO tblUsers VALUES (1, 'admin', 'admin123', 'Admin')")
-        c.execute("INSERT INTO tblUsers VALUES (2, 'staff', 'staff123', 'Staff')")
+        c.execute("INSERT INTO tblUsers (Username, Password, Role) VALUES ('admin', 'admin123', 'Admin')")
+        c.execute("INSERT INTO tblUsers (Username, Password, Role) VALUES ('staff', 'staff123', 'Staff')")
 
     # Sample products
     c.execute("SELECT COUNT(*) FROM tblProducts")
     if c.fetchone()[0] == 0:
         products = [
-            (1, 'Bread', 'Bakery', 1.20, 50),
-            (2, 'Milk', 'Dairy', 0.95, 80),
-            (3, 'Sugar', 'Groceries', 2.50, 30),
-            (4, 'Cooking Oil', 'Groceries', 3.80, 25),
-            (5, 'Rice', 'Groceries', 4.00, 40),
-            (6, 'Soap', 'Toiletries', 0.75, 60),
+            ('Bread', 'Bakery', 1.20, 50),
+            ('Milk', 'Dairy', 0.95, 80),
+            ('Sugar', 'Groceries', 2.50, 30),
+            ('Cooking Oil', 'Groceries', 3.80, 25),
+            ('Rice', 'Groceries', 4.00, 40),
+            ('Soap', 'Toiletries', 0.75, 60),
         ]
-        c.executemany("INSERT INTO tblProducts VALUES (?,?,?,?,?)", products)
+        c.executemany("INSERT INTO tblProducts (ProductName, Category, Price, StockQty) VALUES (%s,%s,%s,%s)", products)
 
     conn.commit()
     conn.close()
@@ -77,11 +75,13 @@ def login():
         username = request.form['username']
         password = request.form['password']
         conn = get_db()
-        user = conn.execute("SELECT * FROM tblUsers WHERE Username=? AND Password=?", (username, password)).fetchone()
+        c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        c.execute("SELECT * FROM tblUsers WHERE Username=%s AND Password=%s", (username, password))
+        user = c.fetchone()
         conn.close()
         if user:
-            session['user'] = user['Username']
-            session['role'] = user['Role']
+            session['user'] = user['username']
+            session['role'] = user['role']
             return redirect(url_for('menu'))
         else:
             flash('Wrong username or password.')
@@ -105,7 +105,9 @@ def products():
     if 'user' not in session or session['role'] != 'Admin':
         return redirect(url_for('menu'))
     conn = get_db()
-    items = conn.execute("SELECT * FROM tblProducts ORDER BY Category, ProductName").fetchall()
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    c.execute("SELECT * FROM tblProducts ORDER BY Category, ProductName")
+    items = c.fetchall()
     conn.close()
     return render_template('products.html', products=items)
 
@@ -119,7 +121,8 @@ def add_product():
         price = float(request.form['price'])
         stock = int(request.form['stock'])
         conn = get_db()
-        conn.execute("INSERT INTO tblProducts (ProductName, Category, Price, StockQty) VALUES (?,?,?,?)", (name, category, price, stock))
+        c = conn.cursor()
+        c.execute("INSERT INTO tblProducts (ProductName, Category, Price, StockQty) VALUES (%s,%s,%s,%s)", (name, category, price, stock))
         conn.commit()
         conn.close()
         flash('Product added!')
@@ -131,17 +134,19 @@ def edit_product(pid):
     if 'user' not in session or session['role'] != 'Admin':
         return redirect(url_for('menu'))
     conn = get_db()
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     if request.method == 'POST':
         name = request.form['name']
         category = request.form['category']
         price = float(request.form['price'])
         stock = int(request.form['stock'])
-        conn.execute("UPDATE tblProducts SET ProductName=?, Category=?, Price=?, StockQty=? WHERE ProductID=?", (name, category, price, stock, pid))
+        c.execute("UPDATE tblProducts SET ProductName=%s, Category=%s, Price=%s, StockQty=%s WHERE ProductID=%s", (name, category, price, stock, pid))
         conn.commit()
         conn.close()
         flash('Product updated!')
         return redirect(url_for('products'))
-    product = conn.execute("SELECT * FROM tblProducts WHERE ProductID=?", (pid,)).fetchone()
+    c.execute("SELECT * FROM tblProducts WHERE ProductID=%s", (pid,))
+    product = c.fetchone()
     conn.close()
     return render_template('edit_product.html', product=product)
 
@@ -150,7 +155,8 @@ def delete_product(pid):
     if 'user' not in session or session['role'] != 'Admin':
         return redirect(url_for('menu'))
     conn = get_db()
-    conn.execute("DELETE FROM tblProducts WHERE ProductID=?", (pid,))
+    c = conn.cursor()
+    c.execute("DELETE FROM tblProducts WHERE ProductID=%s", (pid,))
     conn.commit()
     conn.close()
     flash('Product deleted.')
@@ -162,6 +168,7 @@ def new_sale():
     if 'user' not in session:
         return redirect(url_for('login'))
     conn = get_db()
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     if request.method == 'POST':
         payment = request.form['payment']
         product_ids = request.form.getlist('product_id')
@@ -172,27 +179,29 @@ def new_sale():
             qty = int(qty)
             if qty <= 0:
                 continue
-            product = conn.execute("SELECT * FROM tblProducts WHERE ProductID=?", (pid,)).fetchone()
+            c.execute("SELECT * FROM tblProducts WHERE ProductID=%s", (pid,))
+            product = c.fetchone()
             if product:
-                line_total = product['Price'] * qty
+                line_total = product['price'] * qty
                 total += line_total
-                items.append((int(pid), qty, product['Price']))
+                items.append((int(pid), qty, product['price']))
         if items:
             sale_date = datetime.now().strftime('%Y-%m-%d %H:%M')
-            conn.execute("INSERT INTO tblSales (SaleDate, TotalAmount, PaymentMethod, ServedBy) VALUES (?,?,?,?)",
-                         (sale_date, total, payment, session['user']))
-            sale_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+            c.execute("INSERT INTO tblSales (SaleDate, TotalAmount, PaymentMethod, ServedBy) VALUES (%s,%s,%s,%s) RETURNING SaleID",
+                      (sale_date, total, payment, session['user']))
+            sale_id = c.fetchone()['saleid']
             for pid, qty, price in items:
-                conn.execute("INSERT INTO tblSaleItems (SaleID, ProductID, Quantity, UnitPrice) VALUES (?,?,?,?)",
-                             (sale_id, pid, qty, price))
-                conn.execute("UPDATE tblProducts SET StockQty = StockQty - ? WHERE ProductID=?", (qty, pid))
+                c.execute("INSERT INTO tblSaleItems (SaleID, ProductID, Quantity, UnitPrice) VALUES (%s,%s,%s,%s)",
+                          (sale_id, pid, qty, price))
+                c.execute("UPDATE tblProducts SET StockQty = StockQty - %s WHERE ProductID=%s", (qty, pid))
             conn.commit()
             conn.close()
             flash(f'Sale recorded! Total: ${total:.2f}')
             return redirect(url_for('sale_receipt', sid=sale_id))
         else:
             flash('Please enter at least one item.')
-    products = conn.execute("SELECT * FROM tblProducts WHERE StockQty > 0 ORDER BY Category, ProductName").fetchall()
+    c.execute("SELECT * FROM tblProducts WHERE StockQty > 0 ORDER BY Category, ProductName")
+    products = c.fetchall()
     conn.close()
     return render_template('new_sale.html', products=products)
 
@@ -201,12 +210,15 @@ def sale_receipt(sid):
     if 'user' not in session:
         return redirect(url_for('login'))
     conn = get_db()
-    sale = conn.execute("SELECT * FROM tblSales WHERE SaleID=?", (sid,)).fetchone()
-    items = conn.execute("""
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    c.execute("SELECT * FROM tblSales WHERE SaleID=%s", (sid,))
+    sale = c.fetchone()
+    c.execute("""
         SELECT p.ProductName, si.Quantity, si.UnitPrice, (si.Quantity * si.UnitPrice) AS LineTotal
         FROM tblSaleItems si JOIN tblProducts p ON si.ProductID = p.ProductID
-        WHERE si.SaleID=?
-    """, (sid,)).fetchall()
+        WHERE si.SaleID=%s
+    """, (sid,))
+    items = c.fetchall()
     conn.close()
     return render_template('receipt.html', sale=sale, items=items)
 
@@ -216,7 +228,9 @@ def history():
     if 'user' not in session or session['role'] != 'Admin':
         return redirect(url_for('menu'))
     conn = get_db()
-    sales = conn.execute("SELECT * FROM tblSales ORDER BY SaleDate DESC LIMIT 50").fetchall()
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    c.execute("SELECT * FROM tblSales ORDER BY SaleDate DESC LIMIT 50")
+    sales = c.fetchall()
     conn.close()
     return render_template('history.html', sales=sales)
 
@@ -225,12 +239,15 @@ def sale_detail(sid):
     if 'user' not in session or session['role'] != 'Admin':
         return redirect(url_for('menu'))
     conn = get_db()
-    sale = conn.execute("SELECT * FROM tblSales WHERE SaleID=?", (sid,)).fetchone()
-    items = conn.execute("""
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    c.execute("SELECT * FROM tblSales WHERE SaleID=%s", (sid,))
+    sale = c.fetchone()
+    c.execute("""
         SELECT p.ProductName, si.Quantity, si.UnitPrice, (si.Quantity * si.UnitPrice) AS LineTotal
         FROM tblSaleItems si JOIN tblProducts p ON si.ProductID = p.ProductID
-        WHERE si.SaleID=?
-    """, (sid,)).fetchall()
+        WHERE si.SaleID=%s
+    """, (sid,))
+    items = c.fetchall()
     conn.close()
     return render_template('sale_detail.html', sale=sale, items=items)
 
@@ -240,17 +257,20 @@ def reports():
     if 'user' not in session or session['role'] != 'Admin':
         return redirect(url_for('menu'))
     conn = get_db()
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     today = datetime.now().strftime('%Y-%m-%d')
-    daily = conn.execute("SELECT COUNT(*) as count, SUM(TotalAmount) as total FROM tblSales WHERE SaleDate LIKE ?", (today + '%',)).fetchone()
-    low_stock = conn.execute("SELECT * FROM tblProducts WHERE StockQty < 10 ORDER BY StockQty").fetchall()
-    top_products = conn.execute("""
+    c.execute("SELECT COUNT(*) as count, SUM(TotalAmount) as total FROM tblSales WHERE SaleDate LIKE %s", (today + '%',))
+    daily = c.fetchone()
+    c.execute("SELECT * FROM tblProducts WHERE StockQty < 10 ORDER BY StockQty")
+    low_stock = c.fetchall()
+    c.execute("""
         SELECT p.ProductName, SUM(si.Quantity) as TotalSold
         FROM tblSaleItems si JOIN tblProducts p ON si.ProductID = p.ProductID
         GROUP BY p.ProductName ORDER BY TotalSold DESC LIMIT 5
-    """).fetchall()
+    """)
+    top_products = c.fetchall()
     conn.close()
     return render_template('reports.html', daily=daily, low_stock=low_stock, top_products=top_products, today=today)
 
 if __name__ == '__main__':
-    init_db()
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    init
